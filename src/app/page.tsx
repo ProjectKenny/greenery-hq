@@ -1,4 +1,4 @@
-import { Leaf, Search, Filter, Plus } from 'lucide-react'
+import { Leaf, Search, Plus } from 'lucide-react'
 import Link from 'next/link'
 
 export default function Home() {
