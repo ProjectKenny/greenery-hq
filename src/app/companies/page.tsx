@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Search, Filter, MapPin, Calendar, Users, ExternalLink } from 'lucide-react'
+import { Search, MapPin, Calendar, Users, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react'
 import Navigation from '@/components/Navigation'
 import { supabase } from '@/lib/supabase'
 
@@ -179,6 +179,10 @@ export default function CompaniesPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('')
   const [filteredCompanies, setFilteredCompanies] = useState<CompanyWithCategory[]>([])
+  const [sortBy, setSortBy] = useState<'name' | 'founded_year' | 'employee_count'>('name')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [companiesPerPage] = useState(12)
 
   useEffect(() => {
     async function loadData() {
@@ -221,8 +225,57 @@ export default function CompaniesPage() {
       filtered = filtered.filter(company => company.category_id === selectedCategory)
     }
 
+    // Sort companies
+    filtered.sort((a, b) => {
+      let aValue: any, bValue: any
+
+      switch (sortBy) {
+        case 'name':
+          aValue = a.name.toLowerCase()
+          bValue = b.name.toLowerCase()
+          break
+        case 'founded_year':
+          aValue = a.founded_year || 0
+          bValue = b.founded_year || 0
+          break
+        case 'employee_count':
+          // Convert employee count to numbers for sorting
+          const getEmployeeNumber = (count: string) => {
+            if (!count) return 0
+            if (count.includes('10000+')) return 10000
+            if (count.includes('5000-10000')) return 7500
+            if (count.includes('1000-5000')) return 3000
+            if (count.includes('500-1000')) return 750
+            if (count.includes('200-500')) return 350
+            if (count.includes('50-200')) return 125
+            if (count.includes('11-50')) return 30
+            if (count.includes('1-10')) return 5
+            return 0
+          }
+          aValue = getEmployeeNumber(a.employee_count || '')
+          bValue = getEmployeeNumber(b.employee_count || '')
+          break
+        default:
+          aValue = a.name.toLowerCase()
+          bValue = b.name.toLowerCase()
+      }
+
+      if (sortOrder === 'asc') {
+        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0
+      } else {
+        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0
+      }
+    })
+
     setFilteredCompanies(filtered)
-  }, [companies, searchQuery, selectedCategory])
+    setCurrentPage(1) // Reset to first page when filters change
+  }, [companies, searchQuery, selectedCategory, sortBy, sortOrder])
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredCompanies.length / companiesPerPage)
+  const startIndex = (currentPage - 1) * companiesPerPage
+  const endIndex = startIndex + companiesPerPage
+  const currentCompanies = filteredCompanies.slice(startIndex, endIndex)
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -275,11 +328,25 @@ export default function CompaniesPage() {
               </select>
             </div>
 
-            {/* Filter Button */}
-            <button className="flex items-center justify-center px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-              <Filter className="h-5 w-5 mr-2" />
-              Filters
-            </button>
+            {/* Sort Dropdown */}
+            <div className="lg:w-48">
+              <select
+                value={`${sortBy}-${sortOrder}`}
+                onChange={(e) => {
+                  const [field, order] = e.target.value.split('-') as [typeof sortBy, typeof sortOrder]
+                  setSortBy(field)
+                  setSortOrder(order)
+                }}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              >
+                <option value="name-asc">Name (A-Z)</option>
+                <option value="name-desc">Name (Z-A)</option>
+                <option value="founded_year-desc">Newest First</option>
+                <option value="founded_year-asc">Oldest First</option>
+                <option value="employee_count-desc">Largest First</option>
+                <option value="employee_count-asc">Smallest First</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -306,13 +373,78 @@ export default function CompaniesPage() {
               </div>
             ))}
           </div>
-        ) : filteredCompanies.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredCompanies.map((company) => (
-              <CompanyCard key={company.id} company={company} searchQuery={searchQuery} />
-            ))}
-          </div>
-        ) : companies.length > 0 ? (
+        ) : currentCompanies.length > 0 ? (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              {currentCompanies.map((company) => (
+                <CompanyCard key={company.id} company={company} searchQuery={searchQuery} />
+              ))}
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-gray-700">
+                  Showing {startIndex + 1} to {Math.min(endIndex, filteredCompanies.length)} of {filteredCompanies.length} companies
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                    disabled={currentPage === 1}
+                    className="flex items-center px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    Previous
+                  </button>
+
+                  <div className="flex items-center space-x-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      const pageNum = i + 1
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setCurrentPage(pageNum)}
+                          className={`px-3 py-2 text-sm font-medium rounded-lg ${
+                            currentPage === pageNum
+                              ? 'bg-green-600 text-white'
+                              : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      )
+                    })}
+                    {totalPages > 5 && (
+                      <>
+                        <span className="px-2 text-gray-500">...</span>
+                        <button
+                          onClick={() => setCurrentPage(totalPages)}
+                          className={`px-3 py-2 text-sm font-medium rounded-lg ${
+                            currentPage === totalPages
+                              ? 'bg-green-600 text-white'
+                              : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          {totalPages}
+                        </button>
+                      </>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                    disabled={currentPage === totalPages}
+                    className="flex items-center px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        ) : filteredCompanies.length === 0 && companies.length > 0 ? (
           <div className="text-center py-12">
             <div className="text-gray-400 mb-4">
               <Search className="h-16 w-16 mx-auto" />
