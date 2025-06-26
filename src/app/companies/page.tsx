@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { Search, Filter, MapPin, Calendar, Users, ExternalLink } from 'lucide-react'
 import Navigation from '@/components/Navigation'
 import { supabase } from '@/lib/supabase'
@@ -97,8 +98,9 @@ function HighlightText({ text, searchQuery }: { text: string; searchQuery: strin
 
 function CompanyCard({ company, searchQuery }: { company: CompanyWithCategory; searchQuery: string }) {
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between mb-4">
+    <Link href={`/companies/${company.id}`} className="block">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer">
+        <div className="flex items-start justify-between mb-4">
         <div className="flex items-center space-x-3">
           {company.logo_url ? (
             <div className="w-12 h-12 rounded-lg bg-gray-200 flex items-center justify-center">
@@ -129,6 +131,7 @@ function CompanyCard({ company, searchQuery }: { company: CompanyWithCategory; s
             href={company.website}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
             className="text-gray-400 hover:text-green-600 transition-colors"
           >
             <ExternalLink className="h-5 w-5" />
@@ -162,7 +165,8 @@ function CompanyCard({ company, searchQuery }: { company: CompanyWithCategory; s
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </Link>
   )
 }
 
