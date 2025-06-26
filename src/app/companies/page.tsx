@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { Search, MapPin, Calendar, Users, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react'
 import Navigation from '@/components/Navigation'
 import { supabase } from '@/lib/supabase'
@@ -173,6 +174,7 @@ function CompanyCard({ company, searchQuery }: { company: CompanyWithCategory; s
 
 
 export default function CompaniesPage() {
+  const searchParams = useSearchParams()
   const [companies, setCompanies] = useState<CompanyWithCategory[]>([])
   const [categories, setCategories] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -204,6 +206,14 @@ export default function CompaniesPage() {
 
     loadData()
   }, [])
+
+  // Handle URL parameters
+  useEffect(() => {
+    const categoryParam = searchParams.get('category')
+    if (categoryParam) {
+      setSelectedCategory(categoryParam)
+    }
+  }, [searchParams])
 
   // Filter companies based on search query and category
   useEffect(() => {
