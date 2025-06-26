@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, ExternalLink, MapPin, Calendar, Users, Globe, Star, Building2 } from 'lucide-react'
 import Navigation from '@/components/Navigation'
+import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 
 interface CompanyDetail {
@@ -30,9 +31,14 @@ interface CompanyDetail {
 export default function CompanyDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const { user } = useAuth()
   const [company, setCompany] = useState<CompanyDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [userRating, setUserRating] = useState<number>(0)
+  const [averageRating, setAverageRating] = useState<number>(0)
+  const [totalRatings, setTotalRatings] = useState<number>(0)
+  const [showRatingForm, setShowRatingForm] = useState(false)
 
   useEffect(() => {
     async function fetchCompany() {
@@ -60,6 +66,7 @@ export default function CompanyDetailPage() {
         }
 
         setCompany(data)
+        await fetchRatings()
       } catch (err) {
         setError('Failed to load company details')
       } finally {
@@ -68,7 +75,66 @@ export default function CompanyDetailPage() {
     }
 
     fetchCompany()
-  }, [params.id])
+  }, [params.id, user])
+
+  const fetchRatings = async () => {
+    if (!params.id) return
+
+    try {
+      // Get average rating and count
+      const { data: ratingsData, error: ratingsError } = await supabase
+        .from('ratings')
+        .select('rating')
+        .eq('company_id', params.id)
+
+      if (ratingsError) throw ratingsError
+
+      if (ratingsData && ratingsData.length > 0) {
+        const total = ratingsData.length
+        const sum = ratingsData.reduce((acc, r) => acc + r.rating, 0)
+        setAverageRating(sum / total)
+        setTotalRatings(total)
+      }
+
+      // Get user's rating if logged in
+      if (user) {
+        const { data: userRatingData, error: userRatingError } = await supabase
+          .from('ratings')
+          .select('rating')
+          .eq('company_id', params.id)
+          .eq('user_id', user.id)
+          .single()
+
+        if (userRatingData) {
+          setUserRating(userRatingData.rating)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching ratings:', error)
+    }
+  }
+
+  const handleRating = async (rating: number) => {
+    if (!user || !params.id) return
+
+    try {
+      const { error } = await supabase
+        .from('ratings')
+        .upsert({
+          company_id: params.id,
+          user_id: user.id,
+          rating: rating
+        })
+
+      if (error) throw error
+
+      setUserRating(rating)
+      setShowRatingForm(false)
+      await fetchRatings() // Refresh ratings
+    } catch (error) {
+      console.error('Error submitting rating:', error)
+    }
+  }
 
   if (loading) {
     return (
@@ -254,6 +320,86 @@ export default function CompanyDetailPage() {
               </div>
             </div>
 
+            {/* Ratings */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Community Rating</h3>
+
+              {totalRatings > 0 ? (
+                <div className="text-center mb-4">
+                  <div className="flex items-center justify-center mb-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star
+                        key={star}
+                        className={`h-6 w-6 ${
+                          star <= averageRating
+                            ? 'text-yellow-400 fill-current'
+                            : 'text-gray-300'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <div className="text-2xl font-bold text-gray-900">{averageRating.toFixed(1)}</div>
+                  <div className="text-sm text-gray-500">{totalRatings} rating{totalRatings !== 1 ? 's' : ''}</div>
+                </div>
+              ) : (
+                <div className="text-center mb-4">
+                  <div className="flex items-center justify-center mb-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star key={star} className="h-6 w-6 text-gray-300" />
+                    ))}
+                  </div>
+                  <div className="text-sm text-gray-500">No ratings yet</div>
+                </div>
+              )}
+
+              {user && userRating > 0 && (
+                <div className="text-center mb-4 p-3 bg-green-50 rounded-lg">
+                  <div className="text-sm text-green-800 mb-1">Your Rating</div>
+                  <div className="flex items-center justify-center">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star
+                        key={star}
+                        className={`h-5 w-5 ${
+                          star <= userRating
+                            ? 'text-yellow-400 fill-current'
+                            : 'text-gray-300'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {showRatingForm && user && (
+                <div className="border-t pt-4">
+                  <div className="text-sm font-medium text-gray-700 mb-3">Rate this company:</div>
+                  <div className="flex items-center justify-center space-x-1 mb-4">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        onClick={() => handleRating(star)}
+                        className="p-1 hover:scale-110 transition-transform"
+                      >
+                        <Star
+                          className={`h-8 w-8 ${
+                            star <= userRating
+                              ? 'text-yellow-400 fill-current'
+                              : 'text-gray-300 hover:text-yellow-400'
+                          }`}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => setShowRatingForm(false)}
+                    className="w-full text-sm text-gray-500 hover:text-gray-700"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* Actions */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Actions</h3>
@@ -270,10 +416,20 @@ export default function CompanyDetailPage() {
                   </a>
                 )}
                 
-                <button className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
-                  <Star className="h-4 w-4 mr-2" />
-                  Add to Favorites
-                </button>
+                {user ? (
+                  <button
+                    onClick={() => setShowRatingForm(!showRatingForm)}
+                    className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <Star className="h-4 w-4 mr-2" />
+                    {userRating > 0 ? 'Update Rating' : 'Rate Company'}
+                  </button>
+                ) : (
+                  <button className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                    <Star className="h-4 w-4 mr-2" />
+                    Add to Favorites
+                  </button>
+                )}
               </div>
             </div>
           </div>
