@@ -71,7 +71,31 @@ async function fetchCategories() {
   }
 }
 
-function CompanyCard({ company }: { company: CompanyWithCategory }) {
+// Helper component for highlighting search terms
+function HighlightText({ text, searchQuery }: { text: string; searchQuery: string }) {
+  if (!searchQuery.trim()) {
+    return <span>{text}</span>
+  }
+
+  const regex = new RegExp(`(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
+  const parts = text.split(regex)
+
+  return (
+    <span>
+      {parts.map((part, index) =>
+        regex.test(part) ? (
+          <mark key={index} className="bg-yellow-200 text-yellow-900 px-1 rounded">
+            {part}
+          </mark>
+        ) : (
+          <span key={index}>{part}</span>
+        )
+      )}
+    </span>
+  )
+}
+
+function CompanyCard({ company, searchQuery }: { company: CompanyWithCategory; searchQuery: string }) {
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between mb-4">
@@ -90,10 +114,12 @@ function CompanyCard({ company }: { company: CompanyWithCategory }) {
             </div>
           )}
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">{company.name}</h3>
+            <h3 className="text-lg font-semibold text-gray-900">
+              <HighlightText text={company.name} searchQuery={searchQuery} />
+            </h3>
             {company.categories && (
               <span className="inline-block px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-                {company.categories.name}
+                <HighlightText text={company.categories.name} searchQuery={searchQuery} />
               </span>
             )}
           </div>
@@ -110,13 +136,17 @@ function CompanyCard({ company }: { company: CompanyWithCategory }) {
         )}
       </div>
 
-      <p className="text-gray-600 mb-4 line-clamp-3">{company.description}</p>
+      <p className="text-gray-600 mb-4 line-clamp-3">
+        <HighlightText text={company.description} searchQuery={searchQuery} />
+      </p>
 
       <div className="flex flex-wrap gap-4 text-sm text-gray-500">
         {company.headquarters_city && company.headquarters_country && (
           <div className="flex items-center space-x-1">
             <MapPin className="h-4 w-4" />
-            <span>{company.headquarters_city}, {company.headquarters_country}</span>
+            <span>
+              <HighlightText text={`${company.headquarters_city}, ${company.headquarters_country}`} searchQuery={searchQuery} />
+            </span>
           </div>
         )}
         {company.founded_year && (
@@ -142,6 +172,9 @@ export default function CompaniesPage() {
   const [companies, setCompanies] = useState<CompanyWithCategory[]>([])
   const [categories, setCategories] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState('')
+  const [filteredCompanies, setFilteredCompanies] = useState<CompanyWithCategory[]>([])
 
   useEffect(() => {
     async function loadData() {
@@ -153,6 +186,7 @@ export default function CompaniesPage() {
         ])
         setCompanies(companiesData)
         setCategories(categoriesData)
+        setFilteredCompanies(companiesData)
       } catch (error) {
         console.error('Error loading data:', error)
       } finally {
@@ -163,6 +197,29 @@ export default function CompaniesPage() {
     loadData()
   }, [])
 
+  // Filter companies based on search query and category
+  useEffect(() => {
+    let filtered = companies
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      filtered = filtered.filter(company =>
+        company.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        company.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        company.headquarters_city?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        company.headquarters_country?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        company.categories?.name.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    }
+
+    // Filter by category
+    if (selectedCategory) {
+      filtered = filtered.filter(company => company.category_id === selectedCategory)
+    }
+
+    setFilteredCompanies(filtered)
+  }, [companies, searchQuery, selectedCategory])
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navigation />
@@ -171,7 +228,12 @@ export default function CompaniesPage() {
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Green Tech Directory</h1>
-          <p className="text-gray-600">Discover {companies.length}+ companies driving sustainable innovation</p>
+          <p className="text-gray-600">
+            {loading ? 'Loading companies...' :
+             searchQuery || selectedCategory ?
+             `Found ${filteredCompanies.length} companies` :
+             `Discover ${companies.length}+ companies driving sustainable innovation`}
+          </p>
         </div>
       </div>
 
@@ -186,6 +248,8 @@ export default function CompaniesPage() {
                 <input
                   type="text"
                   placeholder="Search companies, technologies, or locations..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 />
               </div>
@@ -193,10 +257,14 @@ export default function CompaniesPage() {
 
             {/* Category Filter */}
             <div className="lg:w-64">
-              <select className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              >
                 <option value="">All Categories</option>
                 {categories.map((category) => (
-                  <option key={category.id} value={category.slug}>
+                  <option key={category.id} value={category.id}>
                     {category.name}
                   </option>
                 ))}
@@ -234,11 +302,30 @@ export default function CompaniesPage() {
               </div>
             ))}
           </div>
-        ) : companies.length > 0 ? (
+        ) : filteredCompanies.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {companies.map((company) => (
-              <CompanyCard key={company.id} company={company} />
+            {filteredCompanies.map((company) => (
+              <CompanyCard key={company.id} company={company} searchQuery={searchQuery} />
             ))}
+          </div>
+        ) : companies.length > 0 ? (
+          <div className="text-center py-12">
+            <div className="text-gray-400 mb-4">
+              <Search className="h-16 w-16 mx-auto" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No companies match your search</h3>
+            <p className="text-gray-600 mb-4">
+              Try adjusting your search terms or filters to find what you're looking for.
+            </p>
+            <button
+              onClick={() => {
+                setSearchQuery('')
+                setSelectedCategory('')
+              }}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
+              Clear Filters
+            </button>
           </div>
         ) : (
           <div className="text-center py-12">
