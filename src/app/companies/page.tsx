@@ -1,7 +1,9 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { Search, Filter, MapPin, Calendar, Users, ExternalLink } from 'lucide-react'
 import Navigation from '@/components/Navigation'
+import { supabase } from '@/lib/supabase'
 
 interface CompanyWithCategory {
   id: string
@@ -23,20 +25,50 @@ interface CompanyWithCategory {
   }
 }
 
-// Mock data for build - will be replaced with real data after database setup
-function getCompanies(): CompanyWithCategory[] {
-  return []
+// Real data fetching functions
+async function fetchCompanies(): Promise<CompanyWithCategory[]> {
+  try {
+    const { data: companies, error } = await supabase
+      .from('companies')
+      .select(`
+        *,
+        categories (
+          name,
+          slug
+        )
+      `)
+      .eq('status', 'approved')
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching companies:', error)
+      return []
+    }
+
+    return companies || []
+  } catch (error) {
+    console.error('Error fetching companies:', error)
+    return []
+  }
 }
 
-function getCategories() {
-  return [
-    { id: '1', name: 'Solar Energy', slug: 'solar-energy' },
-    { id: '2', name: 'Wind Power', slug: 'wind-power' },
-    { id: '3', name: 'Electric Vehicles', slug: 'electric-vehicles' },
-    { id: '4', name: 'Carbon Capture', slug: 'carbon-capture' },
-    { id: '5', name: 'Green Finance', slug: 'green-finance' },
-    { id: '6', name: 'Sustainable Agriculture', slug: 'sustainable-agriculture' }
-  ]
+async function fetchCategories() {
+  try {
+    const { data: categories, error } = await supabase
+      .from('categories')
+      .select('*')
+      .order('name')
+
+    if (error) {
+      console.error('Error fetching categories:', error)
+      return []
+    }
+
+    return categories || []
+  } catch (error) {
+    console.error('Error fetching categories:', error)
+    return []
+  }
 }
 
 function CompanyCard({ company }: { company: CompanyWithCategory }) {
@@ -107,8 +139,29 @@ function CompanyCard({ company }: { company: CompanyWithCategory }) {
 
 
 export default function CompaniesPage() {
-  const companies = getCompanies()
-  const categories = getCategories()
+  const [companies, setCompanies] = useState<CompanyWithCategory[]>([])
+  const [categories, setCategories] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function loadData() {
+      setLoading(true)
+      try {
+        const [companiesData, categoriesData] = await Promise.all([
+          fetchCompanies(),
+          fetchCategories()
+        ])
+        setCompanies(companiesData)
+        setCategories(categoriesData)
+      } catch (error) {
+        console.error('Error loading data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
+  }, [])
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -159,7 +212,29 @@ export default function CompaniesPage() {
         </div>
 
         {/* Companies Grid */}
-        {companies.length > 0 ? (
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 animate-pulse">
+                <div className="flex items-center space-x-3 mb-4">
+                  <div className="w-12 h-12 bg-gray-200 rounded-lg"></div>
+                  <div>
+                    <div className="h-4 bg-gray-200 rounded w-32 mb-2"></div>
+                    <div className="h-3 bg-gray-200 rounded w-20"></div>
+                  </div>
+                </div>
+                <div className="space-y-2 mb-4">
+                  <div className="h-3 bg-gray-200 rounded"></div>
+                  <div className="h-3 bg-gray-200 rounded w-3/4"></div>
+                </div>
+                <div className="flex space-x-4">
+                  <div className="h-3 bg-gray-200 rounded w-24"></div>
+                  <div className="h-3 bg-gray-200 rounded w-20"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : companies.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {companies.map((company) => (
               <CompanyCard key={company.id} company={company} />
