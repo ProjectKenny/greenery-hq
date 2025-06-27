@@ -134,7 +134,7 @@ export default function Home() {
             Add Your Green Tech Company
           </h3>
           <p className="text-xl text-green-100 mb-8">
-            Join the directory and connect with the global green tech community
+            Join & Connect with our growing green tech community
           </p>
           <Link href="/submit" className="inline-flex items-center px-6 py-3 bg-white text-green-600 font-semibold rounded-lg hover:bg-gray-50 transition-colors">
             <Plus className="h-5 w-5 mr-2" />
@@ -168,20 +168,20 @@ export default function Home() {
               <h4 className="font-semibold mb-4">Company</h4>
               <ul className="space-y-2 text-gray-400">
                 <li><Link href="/about" className="hover:text-white">About Us</Link></li>
-                <li><Link href="/about" className="hover:text-white">Contact</Link></li>
+                <li><Link href="/contact" className="hover:text-white">Contact</Link></li>
                 <li><Link href="/submit" className="hover:text-white">Submit Company</Link></li>
               </ul>
             </div>
             <div>
               <h4 className="font-semibold mb-4">Legal</h4>
               <ul className="space-y-2 text-gray-400">
-                <li><Link href="/about" className="hover:text-white">Privacy Policy</Link></li>
-                <li><Link href="/about" className="hover:text-white">Terms of Service</Link></li>
+                <li><Link href="/privacy" className="hover:text-white">Privacy Policy</Link></li>
+                <li><Link href="/terms" className="hover:text-white">Terms of Service</Link></li>
               </ul>
             </div>
           </div>
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-            <p>&copy; 2024-2025 GreeneryHQ Ltd. All rights reserved. Made with ❤️ by <a href="https://kennytannet" target="_blank" rel="noopener noreferrer" className="text-green-400 hover:text-green-300">KennyTan.net</a></p>
+            <p>&copy; 2024-2025 GreeneryHQ Ltd. All rights reserved. Made with ❤️ by <a href="https://kennytan.net" target="_blank" rel="noopener noreferrer" className="text-green-400 hover:text-green-300">KennyTan.net</a></p>
           </div>
         </div>
       </footer>

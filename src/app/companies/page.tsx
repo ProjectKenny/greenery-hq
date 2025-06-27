@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Search, MapPin, Calendar, Users, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react'
@@ -173,7 +173,8 @@ function CompanyCard({ company, searchQuery }: { company: CompanyWithCategory; s
 
 
 
-export default function CompaniesPage() {
+// Component that uses useSearchParams
+function CompaniesContent() {
   const searchParams = useSearchParams()
   const [companies, setCompanies] = useState<CompanyWithCategory[]>([])
   const [categories, setCategories] = useState<any[]>([])
@@ -492,5 +493,32 @@ export default function CompaniesPage() {
         )}
       </div>
     </div>
+  )
+}
+
+// Main component with Suspense wrapper
+export default function CompaniesPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50">
+        <Navigation />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="animate-pulse">
+            <div className="h-8 bg-gray-200 rounded w-1/3 mb-8"></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[...Array(12)].map((_, i) => (
+                <div key={i} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                  <div className="h-6 bg-gray-200 rounded w-3/4 mb-4"></div>
+                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    }>
+      <CompaniesContent />
+    </Suspense>
   )
 }
