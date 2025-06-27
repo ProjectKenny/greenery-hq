@@ -1,26 +1,31 @@
+'use client'
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Leaf, Search, Plus } from 'lucide-react'
 import Link from 'next/link'
+import Navigation from '@/components/Navigation'
 
 export default function Home() {
+  const [searchQuery, setSearchQuery] = useState('')
+  const router = useRouter()
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (searchQuery.trim()) {
+      router.push(`/companies?search=${encodeURIComponent(searchQuery.trim())}`)
+    } else {
+      router.push('/companies')
+    }
+  }
+
+  const handleCategoryClick = (category: string) => {
+    router.push(`/companies?search=${encodeURIComponent(category)}`)
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-green-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-2">
-              <Leaf className="h-8 w-8 text-green-600" />
-              <h1 className="text-2xl font-bold text-gray-900">GreeneryHQ</h1>
-            </div>
-            <nav className="hidden md:flex space-x-8">
-              <Link href="/companies" className="text-gray-700 hover:text-green-600 font-medium">Directory</Link>
-              <a href="#" className="text-gray-700 hover:text-green-600 font-medium">Categories</a>
-              <a href="#" className="text-gray-700 hover:text-green-600 font-medium">Submit Company</a>
-              <a href="#" className="text-gray-700 hover:text-green-600 font-medium">About</a>
-            </nav>
-          </div>
-        </div>
-      </header>
+      <Navigation />
 
       {/* Hero Section */}
       <section className="py-20 px-4 sm:px-6 lg:px-8">
@@ -33,22 +38,25 @@ export default function Home() {
           </p>
 
           {/* Search Bar */}
-          <div className="max-w-2xl mx-auto mb-8">
+          <form onSubmit={handleSearch} className="max-w-2xl mx-auto mb-8">
             <div className="relative">
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
               <input
                 type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search companies, technologies, or locations..."
                 className="w-full pl-12 pr-4 py-4 text-lg border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
               />
             </div>
-          </div>
+          </form>
 
           {/* Quick Filters */}
           <div className="flex flex-wrap justify-center gap-3 mb-8">
             {['Solar Energy', 'Wind Power', 'Electric Vehicles', 'Carbon Capture', 'Green Finance', 'Sustainable Agriculture'].map((category) => (
               <button
                 key={category}
+                onClick={() => handleCategoryClick(category)}
                 className="px-4 py-2 bg-white text-gray-700 rounded-full border border-gray-300 hover:border-green-500 hover:text-green-600 transition-colors"
               >
                 {category}
@@ -104,7 +112,11 @@ export default function Home() {
               { name: 'Green Finance', count: '60+ companies', color: 'bg-green-100 text-green-800' },
               { name: 'Sustainable Agriculture', count: '75+ companies', color: 'bg-emerald-100 text-emerald-800' },
             ].map((category) => (
-              <div key={category.name} className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow cursor-pointer">
+              <div
+                key={category.name}
+                onClick={() => handleCategoryClick(category.name)}
+                className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
+              >
                 <div className={`inline-block px-3 py-1 rounded-full text-sm font-medium mb-3 ${category.color}`}>
                   {category.name}
                 </div>
@@ -124,10 +136,10 @@ export default function Home() {
           <p className="text-xl text-green-100 mb-8">
             Join the directory and connect with the global green tech community
           </p>
-          <button className="inline-flex items-center px-6 py-3 bg-white text-green-600 font-semibold rounded-lg hover:bg-gray-50 transition-colors">
+          <Link href="/submit" className="inline-flex items-center px-6 py-3 bg-white text-green-600 font-semibold rounded-lg hover:bg-gray-50 transition-colors">
             <Plus className="h-5 w-5 mr-2" />
             Submit Your Company
-          </button>
+          </Link>
         </div>
       </section>
 
@@ -147,29 +159,29 @@ export default function Home() {
             <div>
               <h4 className="font-semibold mb-4">Directory</h4>
               <ul className="space-y-2 text-gray-400">
-                <li><a href="#" className="hover:text-white">Browse Companies</a></li>
-                <li><a href="#" className="hover:text-white">Categories</a></li>
-                <li><a href="#" className="hover:text-white">Search</a></li>
+                <li><Link href="/companies" className="hover:text-white">Browse Companies</Link></li>
+                <li><Link href="/categories" className="hover:text-white">Categories</Link></li>
+                <li><Link href="/companies" className="hover:text-white">Search</Link></li>
               </ul>
             </div>
             <div>
               <h4 className="font-semibold mb-4">Company</h4>
               <ul className="space-y-2 text-gray-400">
-                <li><a href="#" className="hover:text-white">About Us</a></li>
-                <li><a href="#" className="hover:text-white">Contact</a></li>
-                <li><a href="#" className="hover:text-white">Submit Company</a></li>
+                <li><Link href="/about" className="hover:text-white">About Us</Link></li>
+                <li><Link href="/about" className="hover:text-white">Contact</Link></li>
+                <li><Link href="/submit" className="hover:text-white">Submit Company</Link></li>
               </ul>
             </div>
             <div>
               <h4 className="font-semibold mb-4">Legal</h4>
               <ul className="space-y-2 text-gray-400">
-                <li><a href="#" className="hover:text-white">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-white">Terms of Service</a></li>
+                <li><Link href="/about" className="hover:text-white">Privacy Policy</Link></li>
+                <li><Link href="/about" className="hover:text-white">Terms of Service</Link></li>
               </ul>
             </div>
           </div>
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-            <p>&copy; 2024 GreeneryHQ. All rights reserved.</p>
+            <p>&copy; 2024-2025 GreeneryHQ Ltd. All rights reserved. Made with ❤️ by <a href="https://kennytannet" target="_blank" rel="noopener noreferrer" className="text-green-400 hover:text-green-300">KennyTan.net</a></p>
           </div>
         </div>
       </footer>
